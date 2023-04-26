@@ -10,3 +10,6 @@ http = "0.2.9"
 octocrab = { version = "0.20.0", features = ["retry"] }
 tokio = { version = "1.27.0", features = ["full"] }
 anyhow = "1.0"
+indicatif = "0.17.3"
+log = "0.4.17"
+csv = "1.2.1"
