@@ -57,10 +57,10 @@ pub async fn perform_query(
     // In order not to bias the sampling, we can use keywords that should be present
     // in most if not all notebooks.
     // E.g.: output, library, title
-    // extension:Rmd or path:*.Rmd
+    // extension:Rmd or path:*.Rmd ; or also qmd (Quarto)
     octocrab
         .search()
-        .code(&format!("{} extension:Rmd", keyword))
+        .code(&format!("{} extension:qmd", keyword))
         .page(page)
         .per_page(100)
         .send()

@@ -12,7 +12,7 @@ tokio = { version = "1.27.0", features = ["full"] }
 anyhow = "1.0"
 indicatif = "0.17.3"
 log = "0.4.17"
-csv = "1.2.1"
+csv-async = { version = "1.2.6", features = ["tokio", "with_serde"] }
 serde_derive = "1.0.160"
 serde = { version = "1.0.160", features = ["serde_derive"] }
 env_logger = "0.10.0"
