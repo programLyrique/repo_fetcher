@@ -1,5 +1,5 @@
 [package]
-name = "github_repo_fetcher"
+name = "repo_fetcher"
 version = "0.1.0"
 edition = "2021"
 
