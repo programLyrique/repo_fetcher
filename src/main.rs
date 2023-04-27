@@ -51,11 +51,16 @@ async fn main() -> Result<()> {
     let token = std::env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN env variable is required");
 
     // CSV for statistics
-    let mut writer = csv_async::AsyncSerializer::from_writer(
+    let mut writer_builder = csv_async::AsyncWriterBuilder::new();
+    let stat_path = Path::new("statistics.csv");
+    if Path::exists(stat_path) {
+        writer_builder.has_headers(false);
+    }
+    let mut writer = writer_builder.create_serializer(
         OpenOptions::new()
             .create(true)
             .append(true)
-            .open("statistics.csv")
+            .open(stat_path)
             .await?,
     );
 
