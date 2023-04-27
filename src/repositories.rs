@@ -60,7 +60,7 @@ pub async fn perform_query(
     // extension:Rmd or path:*.Rmd ; or also qmd (Quarto)
     octocrab
         .search()
-        .code(&format!("{} extension:qmd", keyword))
+        .code(&format!("{} extension:Rmd", keyword))
         .page(page)
         .per_page(100)
         .send()
