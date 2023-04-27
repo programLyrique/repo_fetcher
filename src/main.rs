@@ -1,5 +1,8 @@
+extern crate csv;
 extern crate octocrab;
 extern crate tokio;
+#[macro_use]
+extern crate serde_derive;
 
 use http::header::USER_AGENT;
 use indicatif::ProgressBar;
@@ -7,6 +10,7 @@ use log::{error, info, warn};
 use octocrab::Octocrab;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::SystemTime;
 use std::{collections::HashSet, path::Path};
 use tokio::time::Duration;
 
@@ -15,11 +19,21 @@ pub mod repositories;
 // TODO: check if dot in names are ignored or not
 const KEYWORDS: &[&str] = &["setup", "author", "date", "library", "output", "title"];
 
+#[derive(Debug, Serialize)]
+struct Statistics {
+    keyword: String,
+    page: u32,
+    new_repos: u32,
+    known_repos: u32,
+    timestamp: Duration,
+}
+
 #[tokio::main]
 async fn main() -> octocrab::Result<()> {
+    env_logger::init();
     let filename = Path::new("repos");
     // Load or create file with unique repo names first
-    let known_repos = if Path::exists(filename) {
+    let mut known_repos = if Path::exists(filename) {
         repositories::load_repos(filename).await
     } else {
         HashSet::<String>::new()
@@ -50,14 +64,16 @@ async fn main() -> octocrab::Result<()> {
         ctrl_c.store(true, Ordering::Relaxed);
     });
 
+    let mut nb_new_repos = 0;
     for keyword in keywords {
         let mut page = 1u32;
         let mut still_results = true;
         let mut nb_pages = None;
+        let mut nb_results_keyword = None; // nb of results fpr one keyword according to github. We can only  get it after the 1st request.
         let pb = ProgressBar::new(100);
         while page < nb_pages.unwrap_or(1000) && still_results && !ctrl.load(Ordering::Relaxed) {
-            info!("## Keyword {} -- page {}", keyword, page);
-            let mut nb_new = 0;
+            info!("Keyword {} -- page {}", keyword, page);
+
             let mut res = repositories::perform_query(&octocrab, &keyword, page).await;
 
             let mut nb_tries = 0;
@@ -68,8 +84,8 @@ async fn main() -> octocrab::Result<()> {
             }) = res
             {
                 warn!("Github error: {:?}", source);
-                //println!("Rate limits: {:?}", octocrab.ratelimit().get().await?);
                 if nb_tries > 10 {
+                    pb.finish();
                     repositories::save_repos(filename, &new_repos).await;
                     error!("Already retried 10 times. Stopping. Maybe token blocked or not valid anymore?");
                     panic!("Already retried 10 times. Stopping. Maybe token blocked or not valid anymore?");
@@ -87,27 +103,57 @@ async fn main() -> octocrab::Result<()> {
                 pb.set_length(v as u64)
             });
             still_results = query.next.is_some();
-            let nb_results = query.total_count.unwrap();
+            query
+                .total_count
+                .map(|v| nb_results_keyword.get_or_insert(v));
+
+            let mut nb_new = 0;
+            let mut nb_known = 0;
             for code in query.into_iter() {
                 let repo = code.repository.full_name.unwrap_or(code.repository.name);
                 if !known_repos.contains(&repo) && !new_repos.contains(&repo) {
                     info!("Repository: {} ; Rmd: {}", repo, code.name);
                     new_repos.insert(repo);
                     nb_new += 1;
+                } else {
+                    nb_known += 1;
                 }
             }
             info!(
-                "{} new repositories on this page out of {}",
-                nb_new, nb_results
+                "{} new repositories on page {} out of {} for keyword {}",
+                nb_new,
+                page,
+                nb_new + nb_known,
+                keyword
             );
+            let record = Statistics {
+                keyword: keyword.clone(),
+                page,
+                new_repos: nb_new,
+                known_repos: nb_known,
+                timestamp: SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap(),
+            };
             tokio::time::sleep(Duration::from_secs(1)).await;
             page += 1;
             pb.inc(1);
         }
+        // Save now the new repositories
+        repositories::save_repos(filename, &new_repos).await;
+        nb_new_repos += new_repos.len();
+        info!(
+            "Keyword {} : {} new out of {} repositories.",
+            keyword,
+            new_repos.len(),
+            nb_results_keyword.unwrap_or(0)
+        );
+        known_repos.extend(new_repos.drain());
+
         pb.finish();
     }
 
-    info!("Found {} new repositories in total.", new_repos.len());
+    info!("Found {} new repositories in total.", nb_new_repos);
 
     // Save back the repos we have found
     repositories::save_repos(filename, &new_repos).await;
