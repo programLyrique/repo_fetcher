@@ -8,6 +8,8 @@ use http::header::USER_AGENT;
 use indicatif::ProgressBar;
 use log::{error, info, warn};
 use octocrab::Octocrab;
+use rand::prelude::*;
+use rand::seq::SliceRandom;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -19,6 +21,16 @@ pub mod repositories;
 
 // TODO: check if dot in names are ignored or not
 const KEYWORDS: &[&str] = &["setup", "author", "date", "library", "output", "title"];
+
+fn sample_keywords(keywords: &Vec<String>) -> String {
+    let rng = &mut rand::thread_rng();
+    let nb_keywords = rng.gen_range(1..3); // between 1 and 3 keywords
+    keywords
+        .choose_multiple(rng, nb_keywords)
+        .map(|v| v.as_str())
+        .collect::<Vec<&str>>()
+        .join(" ")
+}
 
 #[derive(Debug, Serialize)]
 struct Statistics {
@@ -83,7 +95,8 @@ async fn main() -> Result<()> {
 
     // Round-robin for the keywords
     'main_loop: loop {
-        for keyword in &keywords {
+        let keyword = sample_keywords(&keywords);
+        {
             let mut page = 1u32;
             let mut still_results = true;
             let mut nb_pages = None;
@@ -93,6 +106,7 @@ async fn main() -> Result<()> {
                 if ctrl.load(Ordering::Relaxed) {
                     break 'main_loop;
                 }
+
                 info!("Keyword {} -- page {}", keyword, page);
 
                 let mut res = repositories::perform_query(&octocrab, &keyword, page).await;

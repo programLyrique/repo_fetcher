@@ -16,3 +16,4 @@ csv-async = { version = "1.2.6", features = ["tokio", "with_serde"] }
 serde_derive = "1.0.160"
 serde = { version = "1.0.160", features = ["serde_derive"] }
 env_logger = "0.10.0"
+rand = "0.8.5"
