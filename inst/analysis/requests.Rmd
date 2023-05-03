@@ -1,0 +1,56 @@
+---
+title: "Analysis of requests to Github API"
+author: "Pierre Donat-Bouillud"
+date: "2023-05-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(ggplot2)
+```
+
+```{r load-data}
+requests <- read_csv("../../statistics.csv", col_types = "ciii?")
+```
+
+
+```{r prepare}
+requests <- mutate(requests, nb_keywords = lengths(str_split(trimws(keyword), " +")), .after=keyword)
+requests <- mutate(requests, date = as_datetime(timestamp))
+```
+
+## Basic analysis
+
+```{r}
+nb_req_with_repo <- nrow(filter(requests, new_repos > 0))
+```
+
+```{r requests_timeline}
+ggplot(requests, aes(x=date, y=new_repos,colour=page)) +
+    geom_line()
+```
+
+## Keywords
+
+Does it depend on the number of keywords?
+
+```{r}
+ggplot(requests, aes(x=date, y=new_repos)) +
+  geom_point(alpha=0.3) +
+  facet_wrap(~ nb_keywords, ncol = 2)
+```
+
+## Pages
+
+```{r}
+ggplot(requests, aes(x=as.factor(page), y=new_repos)) +
+  geom_col() +
+  xlab("page")
+```
+
