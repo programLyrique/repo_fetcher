@@ -24,7 +24,7 @@ const KEYWORDS: &[&str] = &["setup", "author", "date", "library", "output", "tit
 
 fn sample_keywords(keywords: &Vec<String>) -> String {
     let rng = &mut rand::thread_rng();
-    let nb_keywords = rng.gen_range(1..=3); // between 1 and 3 keywords
+    let nb_keywords = rng.gen_range(2..=4); // between 2 and 4 keywords
     keywords
         .choose_multiple(rng, nb_keywords)
         .map(|v| v.as_str())
