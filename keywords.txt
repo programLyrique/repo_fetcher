@@ -173,3 +173,7 @@ facet_grid
 as_date
 as_datetime
 as.duration 
+str_c
+str_detect
+str_match
+str_extract
