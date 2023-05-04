@@ -106,17 +106,9 @@ async fn main() -> Result<()> {
 
     // Round-robin for the keywords
     'main_loop: loop {
+        let max_weight = seen_per_keywords.values().max().unwrap_or(&0) + 1;
         let sampled_keywords = sample_keywords(&keywords, |k| {
-            seen_per_keywords.get(k.as_str()).map_or_else(
-                || {
-                    f64::max(
-                        1.,
-                        seen_per_keywords.values().sum::<u64>() as f64
-                            / seen_per_keywords.len() as f64,
-                    )
-                },
-                |v| *v as f64,
-            )
+            *seen_per_keywords.get(k.as_str()).unwrap_or(&max_weight) as f64 // favour unseen keywords first
         });
 
         let keyword = sampled_keywords.join(" ");
