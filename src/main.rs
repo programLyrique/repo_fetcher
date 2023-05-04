@@ -66,8 +66,8 @@ async fn main() -> Result<()> {
 
     let mut seen_per_keywords = keywords
         .iter()
-        .map(|v| (v.as_str(), 0))
-        .collect::<HashMap<&str, u64>>(); //TODO
+        .map(|v| (v.as_str(), 100))
+        .collect::<HashMap<&str, u64>>(); 
 
     info!("Loaded query keywords; found {}", keywords.len());
 
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
 
     // Round-robin for the keywords
     'main_loop: loop {
-        let max_weight = seen_per_keywords.values().max().unwrap_or(&0) + 1;
+        let max_weight = seen_per_keywords.values().max().unwrap_or(&1) * 3 + 50;
         let sampled_keywords = sample_keywords(&keywords, |k| {
             *seen_per_keywords.get(k.as_str()).unwrap_or(&max_weight) as f64 // favour unseen keywords first
         });
