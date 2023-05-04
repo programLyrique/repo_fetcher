@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     let mut seen_per_keywords = keywords
         .iter()
         .map(|v| (v.as_str(), 100))
-        .collect::<HashMap<&str, u64>>(); 
+        .collect::<HashMap<&str, u64>>();
 
     info!("Loaded query keywords; found {}", keywords.len());
 
@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
     'main_loop: loop {
         let max_weight = seen_per_keywords.values().max().unwrap_or(&1) * 3 + 50;
         let sampled_keywords = sample_keywords(&keywords, |k| {
-            *seen_per_keywords.get(k.as_str()).unwrap_or(&max_weight) as f64 // favour unseen keywords first
+            *seen_per_keywords.get(k.as_str()).unwrap_or(&max_weight) as f64 // favour unseen keywords first. But actually, we initialize all the keywords so this is useless
         });
 
         let keyword = sampled_keywords.join(" ");
@@ -183,7 +183,7 @@ async fn main() -> Result<()> {
             for k in sampled_keywords.iter() {
                 let res = seen_per_keywords.entry(*k).or_insert(0);
                 *res += nb_new as u64;
-                // make sure it is at least 1
+                // make sure it is at least 1 (but we already initialized all keywords to a high value so it should be fine)
                 *res = max(1, *res);
             }
             if log_enabled!(Level::Info) {
