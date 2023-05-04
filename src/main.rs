@@ -189,7 +189,10 @@ async fn main() -> Result<()> {
 
             // Update the map of seen repos
             for k in sampled_keywords.iter() {
-                *seen_per_keywords.entry(*k).or_insert(0) += nb_new as u64;
+                let res = seen_per_keywords.entry(*k).or_insert(0);
+                *res += nb_new as u64;
+                // make sure it is at least 1
+                *res = max(1, *res);
             }
             if log_enabled!(Level::Info) {
                 for k in sampled_keywords.iter() {
