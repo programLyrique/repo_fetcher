@@ -221,6 +221,14 @@ async fn main() -> Result<()> {
         pb.finish();
     }
 
+    if log_enabled!(Level::Info) {
+        let mut sorted_keywords = Vec::from_iter(seen_per_keywords.iter());
+        sorted_keywords.sort_unstable_by_key(|v| *(*v).1);
+        for (k, v) in sorted_keywords.iter() {
+            info!("W({}) = {}", **k, **v);
+        }
+    }
+
     info!("Found {} new repositories in total.", nb_new_repos);
 
     // Save back the repos we have found
