@@ -54,3 +54,42 @@ ggplot(requests, aes(x=as.factor(page), y=new_repos)) +
   xlab("page")
 ```
 
+## Combination of keywords
+
+```{r}
+requests %>% group_by(keyword) %>%
+  summarize(nb_reqs = n(), first_repos=first(new_repos), last_repos=last(new_repos)) %>%
+  filter(first_repos >= last_repos)
+```
+
+We define a sequence as a series of request with the same keywords but traversing a set of consecutive pages from 1 to n > 1 in a short time span.
+
+Does a combination of keywords appear in several requests not part of the same sequence?
+
+```{r}
+repeat_combinations <- requests %>%
+  mutate(mins = minute(date)) %>%
+  group_by(keyword) %>%
+  summarize(nb_keywords=first(nb_keywords), n_seqs = n_distinct(mins))
+
+repeat_combinations
+```
+
+```{r}
+ggplot(repeat_combinations, aes(x=nb_keywords, y = n_seqs)) +
+  geom_bar(stat = "summary", fun = "mean") +
+  scale_y_continuous(breaks=seq.int(0, 12))
+```
+
+Does repeating a sequence later is a good strategy? Or its potential is already exhausted and no many more repos will be found. Or maybe it is worth it to request it again but only after some (long) time.
+
+```{r}
+slope_sequences <- requests %>%
+  mutate(mins = minute(date)) %>%
+  group_by(keyword, mins) %>%
+  summarize(new_repos = mean(new_repos)) %>%
+  summarize(fit = cov(new_repos, mins) / var(new_repos)) # slope of the lm 
+
+slope_sequences
+```
+
