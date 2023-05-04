@@ -6,10 +6,11 @@ extern crate serde_derive;
 use anyhow::Result;
 use http::header::USER_AGENT;
 use indicatif::ProgressBar;
-use log::{error, info, warn};
+use log::{error, info, log_enabled, warn, Level};
 use octocrab::Octocrab;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
+use std::cmp::max;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -106,7 +107,16 @@ async fn main() -> Result<()> {
     // Round-robin for the keywords
     'main_loop: loop {
         let sampled_keywords = sample_keywords(&keywords, |k| {
-            *seen_per_keywords.get(k.as_str()).unwrap_or(&1) as f64 // at least 1 as a weight
+            seen_per_keywords.get(k.as_str()).map_or_else(
+                || {
+                    f64::max(
+                        1.,
+                        seen_per_keywords.values().sum::<u64>() as f64
+                            / seen_per_keywords.len() as f64,
+                    )
+                },
+                |v| *v as f64,
+            )
         });
 
         let keyword = sampled_keywords.join(" ");
@@ -157,7 +167,7 @@ async fn main() -> Result<()> {
                 .total_count
                 .map(|v| nb_results_keyword.get_or_insert(v));
 
-            let mut nb_new = 0;
+            let mut nb_new = 0u32;
             let mut nb_known = 0;
             for code in query.into_iter() {
                 let repo = code.repository.full_name.unwrap_or(code.repository.name);
@@ -179,7 +189,12 @@ async fn main() -> Result<()> {
 
             // Update the map of seen repos
             for k in sampled_keywords.iter() {
-                *seen_per_keywords.entry(*k).or_insert(0) += 1;
+                *seen_per_keywords.entry(*k).or_insert(0) += nb_new as u64;
+            }
+            if log_enabled!(Level::Info) {
+                for k in sampled_keywords.iter() {
+                    info!("W({}) = {}", k, seen_per_keywords.get(*k).unwrap());
+                }
             }
 
             let record = Statistics {
