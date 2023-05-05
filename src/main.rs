@@ -6,7 +6,7 @@ extern crate serde_derive;
 use anyhow::Result;
 use clap::Parser;
 use http::header::USER_AGENT;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use log::{error, info, log_enabled, warn, Level};
 use octocrab::Octocrab;
 use std::cmp::max;
@@ -241,12 +241,16 @@ async fn main() -> Result<()> {
 
         info!("Looking from {} unique users", users.len());
 
-        'for_loop: for user in users.iter() {
+        let style = ProgressStyle::with_template(
+            "[{elapsed_precise}] {bar:70.white/grey} {pos:>7}/{len:7} {eta}",
+        )
+        .unwrap();
+
+        'for_loop: for user in users.iter().progress_with_style(style) {
             let mut page = 1u32;
             let mut still_results = true;
             let mut nb_pages = None;
             let mut nb_results_user = None; // nb of results for one user according to github. We can only  get it after the 1st request.
-            let pb = ProgressBar::new(1);
             while page < nb_pages.unwrap_or(1000) && still_results {
                 if ctrl.load(Ordering::Relaxed) {
                     break 'for_loop;
@@ -265,7 +269,6 @@ async fn main() -> Result<()> {
                 {
                     warn!("Github error: {:?}", source);
                     if nb_tries > 10 {
-                        pb.finish();
                         writer.flush().await?;
                         repositories::save_repos(filename, &new_repos).await;
                         error!("Already retried 10 times. Stopping. Maybe token blocked or not valid anymore?");
@@ -281,7 +284,6 @@ async fn main() -> Result<()> {
 
                 query.number_of_pages().map(|v| {
                     nb_pages.get_or_insert(v);
-                    pb.set_length(v as u64)
                 });
                 still_results = query.next.is_some();
                 query.total_count.map(|v| nb_results_user.get_or_insert(v));
@@ -308,7 +310,6 @@ async fn main() -> Result<()> {
 
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 page += 1;
-                pb.inc(1);
             }
             // Save now the new repositories
             repositories::save_repos(filename, &new_repos).await;
@@ -320,8 +321,6 @@ async fn main() -> Result<()> {
                 nb_results_user.unwrap_or(0)
             );
             known_repos.extend(new_repos.drain());
-
-            pb.finish();
         }
     }
 
