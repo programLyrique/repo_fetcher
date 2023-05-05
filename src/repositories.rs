@@ -1,9 +1,27 @@
 use anyhow::Result;
 use octocrab::models::Code;
 use octocrab::{Octocrab, Page};
+use rand::prelude::*;
+use rand::seq::SliceRandom;
 use std::{collections::HashSet, path::Path};
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
+
+// TODO: check if dot in names are ignored or not
+pub const KEYWORDS: &[&str] = &["setup", "author", "date", "library", "output", "title"];
+
+pub fn sample_keywords<F>(keywords: &Vec<String>, weight: F) -> Vec<&str>
+where
+    F: Fn(&String) -> f64,
+{
+    let rng = &mut rand::thread_rng();
+    let nb_keywords = rng.gen_range(2..=4); // between 2 and 4 keywords
+    keywords
+        .choose_multiple_weighted(rng, nb_keywords, weight)
+        .unwrap()
+        .map(|v| v.as_str())
+        .collect::<Vec<&str>>()
+}
 
 pub async fn load_keywords(path: &Path) -> Result<Vec<String>> {
     let file = File::open(path).await?;
@@ -48,7 +66,7 @@ pub async fn save_repos(path: &Path, repos: &HashSet<String>) {
     writer.flush().await.unwrap();
 }
 
-pub async fn perform_query(
+pub async fn search_repo_with_keywords(
     octocrab: &Octocrab,
     keyword: &str,
     page: u32,
