@@ -246,7 +246,7 @@ async fn main() -> Result<()> {
             let mut still_results = true;
             let mut nb_pages = None;
             let mut nb_results_user = None; // nb of results for one user according to github. We can only  get it after the 1st request.
-            let pb = ProgressBar::new(100);
+            let pb = ProgressBar::new(1);
             while page < nb_pages.unwrap_or(1000) && still_results {
                 if ctrl.load(Ordering::Relaxed) {
                     break 'for_loop;
